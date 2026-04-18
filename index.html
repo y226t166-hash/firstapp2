@@ -1,1 +1,563 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI大喜利ジェネレーター</title>
+    <style>
+        :root {
+            --primary-color: #e63946; 
+            --bg-color: #fdf2e9; 
+            --text-color: #333;
+            --flip-bg: #fff;
+            --flip-border: #444;
+            --accent-color: #f4a261;
+        }
 
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: #fff;
+            width: 100%;
+            max-width: 600px;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            border: 6px solid var(--primary-color);
+            position: relative;
+            box-sizing: border-box;
+        }
+
+        .bgm-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            margin-top: 0;
+            font-size: 2rem;
+            border-bottom: 3px dashed var(--primary-color);
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .description {
+            text-align: center;
+            font-size: 1.1rem;
+            margin-bottom: 25px;
+            color: #555;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .input-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 15px;
+            font-size: 1.2rem;
+            border: 3px solid #ccc;
+            border-radius: 12px;
+            outline: none;
+            transition: border-color 0.3s;
+            resize: none;
+            box-sizing: border-box;
+            line-height: 1.5;
+            font-family: inherit;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-color);
+        }
+
+        textarea:disabled {
+            background-color: #f9f9f9;
+            color: #999;
+            border-style: dotted;
+        }
+
+        .suggest-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: opacity 0.2s;
+            align-self: flex-end;
+        }
+
+        .suggest-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .main-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 20px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.1s, background-color 0.3s;
+            box-shadow: 0 4px 0 #b22a36;
+        }
+
+        .main-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #b22a36;
+        }
+
+        .main-btn:disabled { 
+            background-color: #ccc; 
+            box-shadow: none; 
+            cursor: not-allowed; 
+        }
+
+        #result-area {
+            display: none;
+            margin-top: 40px;
+            perspective: 1000px;
+        }
+
+        .flip-board {
+            background-color: var(--flip-bg);
+            border: 10px solid var(--flip-border);
+            border-radius: 8px;
+            padding: 50px 30px;
+            position: relative;
+            box-shadow: 8px 8px 0px #ddd;
+            transform: rotateX(-90deg); 
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-align: center;
+            opacity: 0;
+        }
+
+        .flip-board.show {
+            transform: rotateX(0deg); 
+            opacity: 1;
+        }
+
+        .boke-text {
+            font-family: 'Klee One', 'Yu Gothic', sans-serif;
+            font-size: 2.2rem;
+            font-weight: bold;
+            line-height: 1.4;
+            margin: 0;
+            color: #000;
+        }
+
+        .loading {
+            text-align: center;
+            display: none;
+            margin-top: 25px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        .voice-badge {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-top: 30px;
+            color: #777;
+        }
+
+        .mute-btn, .style-btn {
+            background: #fff;
+            border: 2px solid #ddd;
+            cursor: pointer;
+            border-radius: 8px;
+            padding: 4px 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        
+        .style-btn {
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .mute-btn:hover, .style-btn:hover {
+            background-color: #f0f0f0;
+        }
+
+        .error-msg {
+            color: #d00;
+            font-size: 0.9rem;
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="bgm-controls">
+            <button id="mute-btn" class="mute-btn" onclick="toggleBGM()">🎵 BGM: OFF</button>
+            <button id="style-btn" class="style-btn" onclick="changeBGMStyle()">🎹 Style: POP</button>
+        </div>
+        <h1>🎤 AI大喜利ジェネレーター</h1>
+        <p class="description">AI芸人が渾身の一言でボケます！</p>
+
+        <div class="input-group">
+            <label for="odai-input" style="font-weight:bold; font-size: 1.1rem;">お題を入力してください：</label>
+            <div class="input-wrapper">
+                <textarea id="odai-input" placeholder="例：こんな学校はイヤだ。どんな学校？"></textarea>
+                <button id="suggest-btn" type="button" class="suggest-btn" onclick="handleSuggestClick()">💡 AIにお題を考えてもらう</button>
+            </div>
+            <div id="error-display" class="error-msg"></div>
+        </div>
+
+        <button id="submit-btn" class="main-btn" onclick="handleBokeClick()">ボケてもらう！</button>
+
+        <div id="loading" class="loading">
+            AIがフリップに書いています...🖋️
+        </div>
+
+        <div id="result-area">
+            <div id="flip-board" class="flip-board">
+                <p id="boke-output" class="boke-text"></p>
+                <div class="voice-badge">🔊 AI Voice Reading</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // APIキーは実行環境から提供されます
+        const apiKey = ""; 
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+        let bgmNode = null;
+        let isMuted = true;
+        let bgmStyle = 'POP'; 
+
+        // 指数バックオフ付きのFetch関数
+        async function fetchWithRetry(url, options, maxRetries = 5) {
+            let delay = 1000;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) return await response.json();
+                    if (response.status !== 429 && response.status < 500) break; 
+                } catch (e) {
+                    if (i === maxRetries - 1) throw e;
+                }
+                await new Promise(res => setTimeout(res, delay));
+                delay *= 2;
+            }
+            throw new Error("通信に失敗しました。時間をおいて再度お試しください。");
+        }
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playClickSound(type = 'default') {
+            if (isMuted) return;
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type === 'suggest' ? 'triangle' : 'sine';
+            osc.frequency.setValueAtTime(type === 'suggest' ? 880 : 440, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(type === 'suggest' ? 1320 : 110, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playBGM() {
+            initAudio();
+            if (bgmNode) return;
+
+            let step = 0;
+            const nextNote = () => {
+                if (isMuted) return;
+                
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                let duration = 0.4;
+                let interval = 400;
+
+                if (bgmStyle === 'POP') {
+                    const notes = [523.25, 659.25, 783.99, 659.25, 587.33, 739.99, 880.00, 739.99];
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(notes[step % notes.length], audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+                } else if (bgmStyle === 'WA') {
+                    const notes = [440.00, 493.88, 523.25, 659.25, 783.99, 659.25];
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(notes[step % notes.length], audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+                    interval = step % 4 === 0 ? 600 : 300; 
+                } else if (bgmStyle === 'JAZZ') {
+                    const notes = [349.23, 440.00, 523.25, 659.25, 523.25, 440.00];
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(notes[step % notes.length], audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                    interval = 500;
+                }
+
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration + 0.1);
+                
+                step++;
+                bgmNode = setTimeout(nextNote, interval);
+            };
+            nextNote();
+        }
+
+        function toggleBGM() {
+            initAudio();
+            isMuted = !isMuted;
+            const btn = document.getElementById('mute-btn');
+            if (isMuted) {
+                btn.textContent = "🎵 BGM: OFF";
+                clearTimeout(bgmNode);
+                bgmNode = null;
+            } else {
+                btn.textContent = "🎵 BGM: ON";
+                playBGM();
+                playClickSound();
+            }
+        }
+
+        function changeBGMStyle() {
+            const styles = ['POP', 'WA', 'JAZZ'];
+            const labels = {'POP': '🎹 Style: POP', 'WA': '🏮 Style: WA', 'JAZZ': '🎷 Style: JAZZ'};
+            let currentIndex = styles.indexOf(bgmStyle);
+            bgmStyle = styles[(currentIndex + 1) % styles.length];
+            document.getElementById('style-btn').textContent = labels[bgmStyle];
+            if (!isMuted) {
+                clearTimeout(bgmNode);
+                bgmNode = null;
+                playBGM();
+            }
+            playClickSound('suggest');
+        }
+
+        function playJingle() {
+            if (isMuted) return;
+            initAudio();
+            const oscs = [523.25, 659.25, 783.99, 1046.50]; 
+            oscs.forEach(freq => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 1);
+            });
+        }
+
+        // --- TTS 読み上げ ---
+        async function fetchTTS(text) {
+            try {
+                const result = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `芸人のようにハキハキと読んで：${text}` }] }],
+                        generationConfig: {
+                            responseModalities: ["AUDIO"],
+                            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } }
+                        }
+                    })
+                });
+                
+                const audioDataB64 = result.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+                if (audioDataB64) {
+                    const binaryString = atob(audioDataB64);
+                    const pcmData = new Int16Array(binaryString.length / 2);
+                    for (let i = 0; i < pcmData.length; i++) {
+                        pcmData[i] = binaryString.charCodeAt(i * 2) | (binaryString.charCodeAt(i * 2 + 1) << 8);
+                    }
+                    const wavBuffer = pcmToWav(pcmData, 24000);
+                    const audioBlob = new Blob([wavBuffer], { type: 'audio/wav' });
+                    return new Audio(URL.createObjectURL(audioBlob));
+                }
+            } catch (e) {
+                console.error("TTS Error:", e);
+            }
+            return null;
+        }
+
+        function pcmToWav(pcmData, sampleRate) {
+            const buffer = new ArrayBuffer(44 + pcmData.length * 2);
+            const view = new DataView(buffer);
+            const writeString = (offset, string) => {
+                for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+            };
+            writeString(0, 'RIFF');
+            view.setUint32(4, 36 + pcmData.length * 2, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(36, 'data');
+            view.setUint32(40, pcmData.length * 2, true);
+            for (let i = 0; i < pcmData.length; i++) view.setInt16(44 + i * 2, pcmData[i], true);
+            return buffer;
+        }
+
+        // --- ハンドラー ---
+        async function handleSuggestClick() {
+            const errDisp = document.getElementById('error-display');
+            errDisp.style.display = 'none';
+            initAudio();
+            playClickSound('suggest');
+            const odaiInput = document.getElementById('odai-input');
+            const suggestBtn = document.getElementById('suggest-btn');
+            const originalValue = odaiInput.value;
+            
+            suggestBtn.disabled = true;
+            odaiInput.disabled = true;
+            odaiInput.placeholder = "AIがお題を考えています... 💭";
+            odaiInput.value = "";
+
+            try {
+                const data = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: "最高に面白い大喜利のお題を1つだけ。お題の文章のみ出力。" }] }]
+                    })
+                });
+                odaiInput.value = data.candidates[0].content.parts[0].text.trim();
+            } catch (e) { 
+                console.error(e);
+                errDisp.textContent = "お題の生成に失敗しました。";
+                errDisp.style.display = 'block';
+                odaiInput.value = originalValue;
+            } finally {
+                suggestBtn.disabled = false;
+                odaiInput.disabled = false;
+                odaiInput.placeholder = "例：こんな学校はイヤだ。どんな学校？";
+            }
+        }
+
+        async function handleBokeClick() {
+            const errDisp = document.getElementById('error-display');
+            errDisp.style.display = 'none';
+            const odai = document.getElementById('odai-input').value.trim();
+            if (!odai) return;
+
+            initAudio();
+            playClickSound('default');
+            
+            const submitBtn = document.getElementById('submit-btn');
+            const loading = document.getElementById('loading');
+            const resultArea = document.getElementById('result-area');
+            const flipBoard = document.getElementById('flip-board');
+            const bokeOutput = document.getElementById('boke-output');
+
+            submitBtn.disabled = true;
+            loading.style.display = 'block';
+            resultArea.style.display = 'none';
+            flipBoard.classList.remove('show');
+
+            try {
+                const data = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `お題：「${odai}」に対して大喜利で一言ボケて。回答の文字だけ出力。` }] }],
+                        systemInstruction: { parts: [{ text: "あなたは面白いAI芸人です。短い一言でボケてください。フリップ芸のように短くインパクトのある回答にしてください。" }] }
+                    })
+                });
+                
+                const bokeText = data.candidates[0].content.parts[0].text.trim();
+                bokeOutput.textContent = bokeText;
+                
+                // 読み上げ音声を並行して準備
+                const audioPromise = fetchTTS(bokeText);
+                
+                loading.style.display = 'none';
+                resultArea.style.display = 'block';
+                
+                const audio = await audioPromise;
+                if (audio) {
+                    audio.play().catch(e => console.log("Audio Play Blocked:", e));
+                    // 声が聞こえ始めてから少し遅れてフリップ
+                    setTimeout(() => {
+                        playJingle();
+                        flipBoard.classList.add('show');
+                    }, 400);
+                } else {
+                    playJingle();
+                    flipBoard.classList.add('show');
+                }
+
+            } catch (error) {
+                console.error(error);
+                errDisp.textContent = "ボケの生成に失敗しました。通信環境を確認してください。";
+                errDisp.style.display = 'block';
+                loading.style.display = 'none';
+            } finally {
+                submitBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
